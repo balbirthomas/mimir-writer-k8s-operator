@@ -29,7 +29,7 @@ peers:
     interface: mimir_writer_peers
 
 containers:
-  mimir:
+  mimir-writer:
     resource: mimir-image
     mounts:
       - storage: config
