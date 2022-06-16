@@ -2,7 +2,9 @@
 
 ## Description
 
-TODO: Describe your charm in a few paragraphs of Markdown
+The Mimir Writer kubernetes operator provides a service to ingest
+metrics from Prometheus or Grafana Agent and store it into long
+term object storage.
 
 ## Usage
 

@@ -1,14 +1,13 @@
-# Copyright 2022 Balbir Thomas
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 #
-# TEMPLATE-TODO: change this example to suit your needs.
-# If you don't need a config, you can remove the file entirely.
-# It ties in to the example _on_config_changed handler in src/charm.py
-#
-# Learn more about config at: https://juju.is/docs/sdk/config
 
 options:
-  thing:
-    default: 🎁
-    description: A thing used by the charm.
+  s3:
     type: string
+    description: |
+      Credentials for an S3 object storage system. The credentials must in the form of a string that
+      can be deserialized as a YAML object. The top level YAML object is a mapping. The keys in this
+      mapping must provide the requisite S3 credentials. This configuration must be identical to the
+      s3 configuration provided to Mimir Reader that will be related with this charm.
+    default: ""
