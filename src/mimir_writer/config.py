@@ -13,6 +13,9 @@ MIMIR_DIRS = {
     "data": "/tmp/mimir/data/tsdb",
     "tsdb": "/tmp/mimir/tsdb",
     "compactor": "/tmp/mimir/compactor",
+    "rules": "/tmp/mimir/rules",
+    "data-alertmanager": "/tmp/mimir/data-alertmanager",
+    "tenant-rules": "/tmp/mimir/rules/anonymous",
 }
 
 
@@ -65,6 +68,20 @@ def ingester_config():
     return cfg
 
 
+def ruler_config():
+    """Mimir Ruler configuration."""
+    cfg = {"alertmanager_url": f"http://localhost:{MIMIR_PORT}/alertmanager"}
+
+    return cfg
+
+
+def ruler_storage_config():
+    """Mimir Ruler Storage configuration."""
+    cfg = {"backend": "filesystem", "filesystem": {"dir": MIMIR_DIRS["rules"]}}
+
+    return cfg
+
+
 def server_config():
     """Mimir Server configuration."""
     cfg = {"http_listen_port": MIMIR_PORT, "log_level": "error"}
@@ -75,6 +92,16 @@ def server_config():
 def store_gateway_config():
     """Mimir Store Gateway configuration."""
     cfg = {"sharding_ring": {"replication_factor": 1}}
+
+    return cfg
+
+
+def alertmanager_storage_config():
+    """Mimir Alertmanager Storage configuration."""
+    cfg = {
+        "backend": "filesystem",
+        "filesystem": {"dir": MIMIR_DIRS["data-alertmanager"]},
+    }
 
     return cfg
 

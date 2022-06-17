@@ -3,6 +3,21 @@
 #
 
 options:
+  alertmanager_config:
+    type: string
+    description: |
+      Alertmanager configuration in YAML format, with the exclusion of the templates section.
+      Refer to https://www.prometheus.io/docs/alerting/latest/configuration/ for full details.
+    default: ""
+  alertmanager_template:
+    type: string
+    description: |
+      Alertmanager templates definition in YAML format. This is a slight deviation from the official
+      alertmanager config spec. All templates need to go into this single config option, instead of
+      the 'templates' section of the main configuration file. Refer to
+      https://prometheus.io/docs/alerting/latest/notification_examples/ for more details
+      on templates.
+    default: ""
   s3:
     type: string
     description: |
