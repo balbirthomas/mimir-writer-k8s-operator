@@ -50,6 +50,7 @@ class MimirWriterCharm(CharmBase):
         super().__init__(*args)
         self._name = "mimir-writer"
         self._peername = "mimir-writer-peers"
+        self._reader_relation = "mimir-writer"  # relation name with Mimir reader charm
         self._alertmanager = AlertManager()
 
         # library objects for managing charm relations
@@ -60,6 +61,8 @@ class MimirWriterCharm(CharmBase):
         # charm lifecycle event handlers
         self.framework.observe(self.on.mimir_writer_pebble_ready, self._on_mimir_writer_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.mimir_writer_relation_joined, self._on_mimir_reader_relation_joined)
+        self.framework.observe(self.on.mimir_writer_relation_changed, self._on_mimir_reader_relation_chagned)
         self.framework.observe(
             self.on.receive_remote_write_relation_changed,
             self._on_remote_write_relation_changed,
@@ -116,6 +119,20 @@ class MimirWriterCharm(CharmBase):
 
         if self.app.planned_units() > 1 and not self.config.get("s3", ""):
             self.unit.status = BlockedStatus("Replication requires object storage")
+
+    def _on_mimir_reader_relation_joined(self, event):
+        """Handle relation with new Mimir reader unit."""
+        event.relation.data[self.unit]["hostname"] = str(self.hostname)
+
+    def _on_mimir_reader_relation_chagned(self, _):
+        """Handle changes in relation with Mimir reader."""
+        logger.debug("Readers related to Mimir writer: %s", self.readers)
+        self._set_mimir_config()
+        self._set_alertmanager_config()
+        mimir_restarted = self._restart_mimir()
+
+        if mimir_restarted:
+            self.unit.status = ActiveStatus()
 
     def _on_remote_write_relation_changed(self, _):
         """Handle change with remote write consumers.
@@ -199,7 +216,7 @@ class MimirWriterCharm(CharmBase):
             "server": server_config(),
             "store_gateway": store_gateway_config(),
             "alertmanager_storage": alertmanager_storage_config(),
-            "memberlist": memberlist_config(self.unit.name, self.peers),
+            "memberlist": memberlist_config(self.unit.name, self.peers, self.readers),
         }
 
         return yaml.dump(config)
@@ -286,6 +303,22 @@ class MimirWriterCharm(CharmBase):
                 peers[unit.name] = hostname
 
         return peers
+
+    @property
+    def readers(self):
+        """Fetch hostnames of all related Mimir reader units.
+
+        Returns:
+            A list of reader hostnames.
+        """
+        mimir_readers = []
+        for relation in self.model.relations[self._reader_relation]:
+            for unit in relation.units:
+                hostname = relation.data[unit].get("hostname")
+                if hostname:
+                    mimir_readers.append(str(hostname))
+
+        return mimir_readers
 
 
 if __name__ == "__main__":

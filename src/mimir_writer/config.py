@@ -4,6 +4,8 @@
 
 """Utilities to construct Mimir configuration."""
 
+import logging
+
 MIMIR_PORT = 9009
 MIMIR_PUSH_PATH = "/api/v1/push"
 MIMIR_CONFIG_FILE = "/etc/mimir/config.yaml"
@@ -17,6 +19,9 @@ MIMIR_DIRS = {
     "data-alertmanager": "/tmp/mimir/data-alertmanager",
     "tenant-rules": "/tmp/mimir/rules/anonymous",
 }
+
+
+logger = logging.getLogger(__name__)
 
 
 def block_storage_config(s3_config, retention_period):
@@ -106,7 +111,7 @@ def alertmanager_storage_config():
     return cfg
 
 
-def memberlist_config(nodename, peers):
+def memberlist_config(nodename, peers, readers):
     """Mimir Member List configuration.
 
     Each member of a Mimir cluster needs to set its own "memberlist".
@@ -118,7 +123,12 @@ def memberlist_config(nodename, peers):
             which are part of the current Mimir cluster. Each dictionary
             in this list has as its values the hostnames of the memberlist.
             The keys are typical the node names.
+        readers: a list of Mimir reader unit hostnames of all reader units
+             related to this Mimir writer charm.
     """
-    cfg = {"node_name": nodename, "join_members": list(peers.values())}
+    members = list(peers.values())
+    members.extend(readers)
+    logger.debug("Mimir writer memberlist : %s", members)
+    cfg = {"node_name": nodename, "join_members": members}
 
     return cfg
