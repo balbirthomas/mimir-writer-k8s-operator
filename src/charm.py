@@ -14,7 +14,7 @@ import yaml
 
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from mimir_writer.alertmanager import (
     DEFAULT_ALERT_TEMPLATE,
     DEFAULT_ALERTMANAGER_CONFIG,
@@ -51,6 +51,7 @@ class MimirWriterCharm(CharmBase):
 
         # charm lifecycle event handlers
         self.framework.observe(self.on.mimir_writer_pebble_ready, self._on_mimir_writer_pebble_ready)
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
 
     def _on_mimir_writer_pebble_ready(self, event):
         """Define and start a workload using the Pebble API.
@@ -85,6 +86,24 @@ class MimirWriterCharm(CharmBase):
 
         self._set_alertmanager_config()
         self.unit.status = ActiveStatus()
+
+    def _on_config_changed(self, _):
+        """Handle Mimir configuration change.
+
+        Configuration changes are handled by setting a new Mimir
+        and Alertmanager configuration and restarting Mimir. Also
+        it is check if replication has been enabled without object
+        storage and in this case blocked status is set.
+        """
+        self._set_mimir_config()
+        self._set_alertmanager_config()
+        mimir_restarted = self._restart_mimir()
+
+        if mimir_restarted:
+            self.unit.status = ActiveStatus()
+
+        if self.app.planned_units() > 1 and not self.config.get("s3", ""):
+            self.unit.status = BlockedStatus("Replication requires object storage")
 
     def _restart_mimir(self):
         """Restart Mimir workload."""
