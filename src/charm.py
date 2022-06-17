@@ -15,6 +15,9 @@ import yaml
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from charms.prometheus_k8s.v0.prometheus_remote_write import (
+    PrometheusRemoteWriteProvider,
+)
 from mimir_writer.alertmanager import (
     DEFAULT_ALERT_TEMPLATE,
     DEFAULT_ALERTMANAGER_CONFIG,
@@ -49,9 +52,18 @@ class MimirWriterCharm(CharmBase):
         self._peername = "mimir-writer-peers"
         self._alertmanager = AlertManager()
 
+        # library objects for managing charm relations
+        self.remote_write_provider = PrometheusRemoteWriteProvider(
+            self, endpoint_port=MIMIR_PORT, endpoint_path=MIMIR_PUSH_PATH
+        )
+
         # charm lifecycle event handlers
         self.framework.observe(self.on.mimir_writer_pebble_ready, self._on_mimir_writer_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(
+            self.on.receive_remote_write_relation_changed,
+            self._on_remote_write_relation_changed,
+        )
 
     def _on_mimir_writer_pebble_ready(self, event):
         """Define and start a workload using the Pebble API.
@@ -104,6 +116,23 @@ class MimirWriterCharm(CharmBase):
 
         if self.app.planned_units() > 1 and not self.config.get("s3", ""):
             self.unit.status = BlockedStatus("Replication requires object storage")
+
+    def _on_remote_write_relation_changed(self, _):
+        """Handle change with remote write consumers.
+
+        In response to changes with remote write consumers,
+        Mimir's alert rules are updated to the current set of
+        alert rules provided by all remote write consumers.
+        """
+        container = self.unit.get_container(self._name)
+
+        if not container.can_connect():
+            self.unit.status = WaitingStatus("Waiting for Pebble ready")
+            return
+
+        alerts_for_all_relations = self.remote_write_provider.alerts()
+        for _, alerts in alerts_for_all_relations.items():
+            self._set_alert_rules(alerts["groups"])
 
     def _restart_mimir(self):
         """Restart Mimir workload."""
