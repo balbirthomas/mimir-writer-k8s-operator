@@ -82,7 +82,7 @@ class MimirWriterCharm(CharmBase):
         # Get a reference the container attribute on the PebbleReadyEvent
         container = event.workload
         # Define an initial Pebble layer configuration
-        targets = "distributor,ingester,compactor,store-gateway,purger,ruler,alertmanager"
+        targets = "distributor,ingester,compactor,purger,ruler,alertmanager"
         pebble_layer = {
             "summary": "mimir layer",
             "description": "pebble config layer for mimir",
@@ -209,8 +209,8 @@ class MimirWriterCharm(CharmBase):
             "multitenancy_enabled": False,
             "blocks_storage": block_storage_config(s3_config, retention_period),
             "compactor": compactor_config(),
-            "distributor": distributor_config(),
-            "ingester": ingester_config(),
+            "distributor": distributor_config(self.hostname),
+            "ingester": ingester_config(self.hostname),
             "ruler": ruler_config(),
             "ruler_storage": ruler_storage_config(),
             "server": server_config(),

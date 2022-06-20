@@ -51,18 +51,18 @@ def compactor_config():
     return cfg
 
 
-def distributor_config():
+def distributor_config(hostname):
     """Mimir Distributor configuration."""
-    cfg = {"ring": {"instance_addr": "127.0.0.1", "kvstore": {"store": "memberlist"}}}
+    cfg = {"ring": {"instance_addr": str(hostname), "kvstore": {"store": "memberlist"}}}
 
     return cfg
 
 
-def ingester_config():
+def ingester_config(hostname):
     """Mimir Ingestor configuration."""
     cfg = {
         "ring": {
-            "instance_addr": "127.0.0.1",
+            "instance_addr": str(hostname),
             "kvstore": {
                 "store": "memberlist",
             },
